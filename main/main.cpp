@@ -16,17 +16,6 @@
 static const char *TAG = "ssd1608";
 static spi_device_handle_t epd_spi = nullptr;
 
-esp_err_t SSD1608::init() {
-    init_gpio();
-    init_spi();
-    epd_init();
-    return ESP_OK;
-}
-
-esp_err_t SSD1608::clear() {
-    return epd_clear_screen();
-}
-
 // main function
 extern "C" void app_main() {
     ESP_LOGI(TAG, "Starting Eink display test");
