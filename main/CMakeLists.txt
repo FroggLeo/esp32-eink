@@ -1,10 +1,7 @@
-# main/CMakeLists.txt
-
 idf_component_register(
-    SRCS
-        "main.cpp"
-        "eink.cpp"
-        "buttons.cpp"
-    INCLUDE_DIRS
-        "."
+    SRCS "main.cpp"
+    INCLUDE_DIRS "."
+    PRIV_REQUIRES
+        esp_driver_gpio
+        esp_driver_spi
 )
