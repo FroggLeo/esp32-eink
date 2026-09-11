@@ -35,7 +35,7 @@ static void clear_buffer() {
 }
 // draw a single pixel at xy coordinates
 static void draw_pixel(int x, int y, bool black = true) {
-    if (x < 0 || x > WIDTH || y < 0 || y > HEIGHT) {return;}
+    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {return;}
     // rotate xy coordinates into panel's native coordinates
     int native_x = NATIVE_WIDTH-1-y;
     int native_y = x;
@@ -63,28 +63,28 @@ static void draw_rect(int x, int y, int width, int height, bool fill = true, boo
     } else {
         for (int ix = x; ix < x + width; ix++) {
             draw_pixel(ix, y, black);
-            draw_pixel(ix, y + height, black);
+            draw_pixel(ix, y + height - 1, black);
         }
         for (int iy = y + 1; iy < y + height - 1; iy++) { // skip the corners since previous function already covered them
             draw_pixel(x, iy, black);
-            draw_pixel(x + width, iy, black);
+            draw_pixel(x + width - 1, iy, black);
         }
     }
 }
 // write the buffer to the e ink
-static void spi_write(const uint8_t *data, size_t length) {
+static void spi_write(const uint8_t *data, size_t length)
+{
+    gpio_set_level(Pins::EINK_CS, 0);
     while (length > 0) {
-        // max chunk size to 64
         size_t chunk = length > 64 ? 64 : length;
-        // transaction object
         spi_transaction_t transaction = {};
-        transaction.length = chunk * 8; // length in bits
-        transaction.tx_buffer = data; // data from buffer
-        // now send over the buffer
+        transaction.length = chunk * 8;
+        transaction.tx_buffer = data;
         ESP_ERROR_CHECK(spi_device_transmit(epd_spi, &transaction));
         data += chunk;
         length -= chunk;
     }
+    gpio_set_level(Pins::EINK_CS, 1);
 }
 // DC pin can receive commands or data
 // command send helper
@@ -117,22 +117,24 @@ static void init_spi() {
     spi_device_interface_config_t device = {};
     device.clock_speed_hz = 4 * 1000 * 1000;
     device.mode = 0;
-    device.spics_io_num = Pins::EINK_CS;
+    device.spics_io_num = -1;
     device.queue_size = 1;
     // initialize spi interface
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &device, &epd_spi));
 }
 // initialize gpio
 static void init_gpio() {
-    // dc and reset output
     gpio_config_t outputs = {};
-    outputs.pin_bit_mask = (1ULL << Pins::EINK_DC | 1ULL << Pins::EINK_RST);
+    outputs.pin_bit_mask =(1ULL << Pins::EINK_DC) | (1ULL << Pins::EINK_RST) | (1ULL << Pins::EINK_CS);
     outputs.mode = GPIO_MODE_OUTPUT;
     outputs.pull_up_en = GPIO_PULLUP_DISABLE;
     outputs.pull_down_en = GPIO_PULLDOWN_DISABLE;
     outputs.intr_type = GPIO_INTR_DISABLE;
     ESP_ERROR_CHECK(gpio_config(&outputs));
-    // busy input
+    // start control signals in idle state
+    ESP_ERROR_CHECK(gpio_set_level(Pins::EINK_CS, 1));
+    ESP_ERROR_CHECK(gpio_set_level(Pins::EINK_DC, 1));
+    ESP_ERROR_CHECK(gpio_set_level(Pins::EINK_RST, 1));
     gpio_config_t busy = {};
     busy.pin_bit_mask = (1ULL << Pins::EINK_BUSY);
     busy.mode = GPIO_MODE_INPUT;
@@ -152,9 +154,12 @@ static void epd_reset() {
     gpio_set_level(Pins::EINK_RST, 0);
     delay_ms(20);
     gpio_set_level(Pins::EINK_RST, 1);
+    delay_ms(200);
 }
 // delay until operation done on eink
 static esp_err_t epd_wait_busy() {
+    delay_ms(10);
+    ESP_LOGI(TAG, "BUSY = %d", gpio_get_level(Pins::EINK_BUSY));
     for (int i = 0; i < 1000; i++) {
         if (gpio_get_level(Pins::EINK_BUSY) == 0) {
             return ESP_OK;
@@ -165,8 +170,8 @@ static esp_err_t epd_wait_busy() {
     ESP_LOGE(TAG, "Eink BUSY timeout after 10000ms");
     return ESP_ERR_TIMEOUT;
 }
-// panel update waveform data
-static uint8_t full_lut[] = {
+// lut for ssd1608
+static const uint8_t full_lut[] = {
     0x50, 0xAA, 0x55, 0xAA, 0x11,
     0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00,
@@ -193,7 +198,31 @@ static void epd_set_full_window() {
     uint8_t y_start[] = {0x00, 0x00};
     epd_data(y_start, sizeof(y_start));
 }
+static esp_err_t epd_full_update() {
+    epd_command(0x22);
+    epd_data(0xC4);
+    epd_command(0x20);
+    esp_err_t result = epd_wait_busy();
+    epd_command(0xFF);
+    return result;
+}
+static esp_err_t epd_clear_screen() {
+    epd_set_full_window();
+    ESP_LOGI(TAG, "Writing white framebuffer");
+    epd_command(0x24);
+    uint8_t white[64];
+    memset(white, 0xFF, sizeof(white));
+    size_t remaining = FRAMEBUFFER_SIZE;
+    while (remaining > 0) {
+        size_t chunk = remaining > sizeof(white) ? sizeof(white) : remaining;
+        epd_data(white, chunk);
+        remaining -= chunk;
+    }
+    ESP_LOGI(TAG, "Refreshing white screen");
+    return epd_full_update();
+}
 static void epd_init() {
+    ESP_LOGI(TAG, "Hardware reset");
     epd_reset();
     epd_command(0x01);
     uint8_t gate[] = {0x27, 0x01, 0x00};
@@ -210,23 +239,25 @@ static void epd_init() {
     epd_set_full_window();
     epd_command(0x32);
     epd_data(full_lut, sizeof(full_lut));
+    ESP_LOGI(TAG, "Powering panel on");
     epd_command(0x22);
     epd_data(0xC0);
     epd_command(0x20);
     ESP_ERROR_CHECK(epd_wait_busy());
+    ESP_LOGI(TAG, "Panel powered on");
 }
 // send buffer and refresh the e ink display
-static void epd_refresh() {
+static esp_err_t epd_refresh() {
     epd_set_full_window();
     ESP_LOGI(TAG, "Sending framebuffer");
     epd_command(0x24);
     epd_data(framebuffer, sizeof(framebuffer));
-    ESP_LOGI(TAG, "Refreshing display");
-    epd_command(0x22);
-    epd_data(0xC4);
-    epd_command(0x20);
-    ESP_ERROR_CHECK(epd_wait_busy());
-    ESP_LOGI(TAG, "Refresh complete");
+    ESP_LOGI(TAG, "Starting full refresh");
+    esp_err_t err = epd_full_update();
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Refresh complete");
+    }
+    return err;
 }
 // main function
 extern "C" void app_main() {
@@ -235,10 +266,25 @@ extern "C" void app_main() {
     init_gpio();
     init_spi();
     epd_init();
+
+    if (epd_clear_screen() != ESP_OK) {
+        ESP_LOGE(TAG, "Initial white refresh failed");
+        while (true) {
+            delay_ms(1000);
+        }
+    }
+
     clear_buffer();
     // draw stuff now!
     draw_rect(5, 5, 286, 118, false);
     draw_rect(20, 20, 20, 20);
+
     // refresh the display
-    epd_refresh();
+    if (epd_refresh() != ESP_OK) {
+        ESP_LOGE(TAG, "Image refresh failed");
+    }
+
+    while(true) {
+        delay_ms(1000);
+    }
 }
