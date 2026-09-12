@@ -2,15 +2,10 @@
 
 #include <stdint.h>
 
+#include "eink/display.hpp"
+
 #include "eink/DEV_Config.h"
 #include "eink/EPD_2in9.h"
-
-class Eink {
-    public:
-        void init();
-        void clear();
-        void refresh(uint8_t *buffer, bool full_refresh);
-};
 
 void Eink::init() {
     DEV_Module_Init();
@@ -22,6 +17,6 @@ void Eink::clear() {
 }
 
 void Eink::refresh(uint8_t *buffer, bool full_refresh) {
-    EPD_2IN9_Init(EPD_2IN9_FULL ? full_refresh : EPD_2IN9_PART);
+    EPD_2IN9_Init(full_refresh ? EPD_2IN9_FULL : EPD_2IN9_PART);
     EPD_2IN9_Display(buffer);
 }

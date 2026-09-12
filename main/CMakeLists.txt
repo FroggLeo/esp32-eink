@@ -6,6 +6,7 @@ idf_component_register(
         "eink/display.cpp"
         "eink/EPD_2in9.c"
         "graphics/canvas.cpp"
+        "graphics/drawing.cpp"
     INCLUDE_DIRS
         "."
         "eink"

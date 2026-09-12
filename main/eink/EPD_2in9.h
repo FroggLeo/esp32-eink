@@ -88,9 +88,16 @@
 #define EPD_2IN9_FULL			0
 #define EPD_2IN9_PART			1
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void EPD_2IN9_Init(UBYTE Mode);
 void EPD_2IN9_Clear(void);
 void EPD_2IN9_Display(UBYTE *Image);
 void EPD_2IN9_Sleep(void);
 
+#ifdef __cplusplus
+}
+#endif
 #endif
