@@ -27,6 +27,7 @@ void DEV_Delay_ms(uint32_t ms);
 void DEV_SPI_WriteByte(uint8_t value);
 int DEV_Digital_Read(int pin);
 void DEV_Digital_Write(int pin, int value);
+int DEV_Module_Init();
 
 #ifdef __cplusplus
 }
