@@ -77,7 +77,7 @@
 #
 ******************************************************************************/
 #include "EPD_2in9.h"
-#include "Debug.h"
+//#include "Debug.h"
 
 const unsigned char EPD_2IN9_lut_full_update[] = {
     0x50, 0xAA, 0x55, 0xAA, 0x11, 0x00,
@@ -141,11 +141,11 @@ parameter:
 ******************************************************************************/
 void EPD_2IN9_ReadBusy(void)
 {
-    Debug("e-Paper busy\r\n");
+    Debug("e-Paper busy");
     while(DEV_Digital_Read(EPD_BUSY_PIN) == 1) {      //LOW: idle, HIGH: busy
         DEV_Delay_ms(100);
     }
-    Debug("e-Paper busy release\r\n");
+    Debug("e-Paper busy release");
 }
 
 /******************************************************************************
