@@ -13,12 +13,9 @@
 #include <pins.hpp>
 
 static const char *TAG = "ssd1608";
-static spi_device_handle_t epd_spi = nullptr;
 
 // main function
 extern "C" void app_main() {
-    ESP_LOGI(TAG, "Starting Eink display test");
-    // initialize components
-    
+    ESP_LOGI(TAG, "Starting Eink display test");    
     
 }
