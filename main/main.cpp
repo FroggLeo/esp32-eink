@@ -1,42 +1,94 @@
+#include <cstring>
+
 #include "DEV_Config.h"
 #include "esp_log.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
 #include "eink/display.hpp"
+#include "eink/Display_EPD_W21.h"
 #include "graphics/canvas.hpp"
-#include "graphics/drawing.hpp"
-
-#include "graphics/font.hpp"
-#include "graphics/fonts/test_font.hpp"
 
 static const char *TAG = "main";
 
-// main function
 extern "C" void app_main() {
-    ESP_LOGI(TAG, "Starting Eink display test");    
     Eink display;
     display.init();
-    Canvas content(128, 296, 90);
-    content.buffer_fill(true);
-    for (int i = 10; i < 100; i++) {
-        content.draw_pixel(i, i, false);
+
+    Canvas black(128, 296, 90);
+    Canvas red(128, 296, 90);
+
+    black.buffer_fill(true);
+    red.buffer_fill(true);
+
+    // FIRST: completely scrub whatever was previously on the panel.
+    ESP_LOGI(TAG, "Normal full white refresh");
+    EPD_HW_Init();
+    EPD_WhiteScreen_White();
+    EPD_DeepSleep();
+
+    DEV_Delay_ms(1000);
+
+    // THEN: enter partial-update mode from a known clean state.
+    ESP_LOGI(TAG, "Setting white base map");
+    EPD_HW_Init();
+
+    EPD_SetRAMValue_BaseMap(
+        black.get_buffer(),
+        red.get_buffer()
+    );
+
+    // Vendor partial region:
+    // PART_COLUMN = 32 pixels high
+    // PART_LINE   = 64 pixels wide
+    uint8_t part[32 * 64 / 8];
+
+    // white background
+    memset(part, 0xFF, sizeof(part));
+
+    // draw a simple 32x16 black rectangle in the middle
+    for (int y = 8; y < 24; y++) {
+        for (int x_byte = 2; x_byte < 6; x_byte++) {
+            part[y * 8 + x_byte] = 0x00;
+        }
     }
-    display.refresh(content.get_buffer(), true);
-    DEV_Delay_ms(1000);
-    display.refresh(content.get_buffer(), true);
-    DEV_Delay_ms(1000);
-    display.refresh(content.get_buffer(), true);
-    DEV_Delay_ms(1000);
-    content.buffer_fill(true);
-    draw_rect(content, 10, 10, 280, 100, true, false);
-    display.refresh(content.get_buffer(), true);
-    set_font(test_font);
-    draw_char(content, 20, 20, 'A', true);
-    draw_char(content, 30, 20, 'B', true);
-    draw_char(content, 40, 20, 'C', true);
-    draw_text(content, 40, 30, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", true);
-    display.refresh(content.get_buffer(), false);
-    return;
+
+    ESP_LOGI(TAG, "Partial -> black rectangle");
+
+    EPD_Dis_Part(
+        0,
+        0,
+        part,
+        32,
+        64
+    );
+
+    DEV_Delay_ms(2000);
+
+    // erase the exact same area
+    memset(part, 0xFF, sizeof(part));
+
+    ESP_LOGI(TAG, "Partial -> white");
+
+    EPD_Dis_Part(
+        0,
+        0,
+        part,
+        32,
+        64
+    );
+
+    EPD_DeepSleep();
 }
+    /*
+    Canvas black(128, 296, 90);
+    Canvas red(128, 296, 90);
+    black.buffer_fill(true);
+    red.buffer_fill(true);
+    set_font(test_font);
+    draw_rect(black, 10, 10, 120, 50, true, false);
+    draw_text(black, 30, 30, "BLACK", true);
+    draw_text(black, 30, 70, "BLACK", false);
+    draw_rect(red, 160, 10, 120, 50, true, false);
+    draw_text(red, 180, 30, "RED", true);
+    draw_text(red, 180, 70, "RED", false);
+    display.refresh(black.get_buffer(), red.get_buffer());
+    */

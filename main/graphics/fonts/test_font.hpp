@@ -228,7 +228,7 @@ inline constexpr Glyph test_glyphs[] = {
         5,
         6,
         {
-            0b01110000,
+            0b11110000,
             0b10001000,
             0b10001000,
             0b11110000,
