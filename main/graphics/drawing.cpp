@@ -1,9 +1,10 @@
+#include <cstdint>
 #include <stdint.h>
 
 #include "graphics/canvas.hpp"
 #include "graphics/drawing.hpp"
 
-void draw_rect(Canvas& canvas, int x, int y, int width, int height, bool fill = true, bool white = true) {
+void draw_rect(Canvas& canvas, int x, int y, int width, int height, bool fill = true, bool white = false) {
     if (fill) {
         for (int iy = y; iy < y + height; iy++) {
             for (int ix = x; ix < x + width; ix++) {
