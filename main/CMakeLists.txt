@@ -1,6 +1,15 @@
 idf_component_register(
-    SRCS "DEV_Config.cpp" "EPD_2in9.c" "main.cpp"
-    INCLUDE_DIRS "."
+    SRCS 
+        "main.cpp"
+        "buttons.cpp"
+        "eink/DEV_Config.cpp"
+        "eink/display.cpp"
+        "eink/EPD_2in9.c"
+        "graphics/canvas.cpp"
+    INCLUDE_DIRS
+        "."
+        "eink"
+        "graphics"
     PRIV_REQUIRES
         esp_driver_gpio
         esp_driver_spi
