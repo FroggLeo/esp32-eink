@@ -25,3 +25,14 @@ void Eink::refresh(uint8_t *black_buffer, uint8_t *red_buffer, bool fast_refresh
     }
     EPD_DeepSleep();
 }
+
+void Eink::fast_bw_refresh(uint8_t *black_buffer, uint8_t *red_buffer) {
+    // Two 125 Hz passes gives much better development on thin and isolated
+    // black pixels than a single pass on this panel. Red is rewritten into
+    // RAM on each pass but its LUT is disabled, so existing red is preserved.
+    EPD_HW_Init_Fast_BW_A();
+    EPD_WhiteScreen_BW_Fast_A(black_buffer, red_buffer);
+
+    EPD_HW_Init_Fast_BW_A();
+    EPD_WhiteScreen_BW_Fast_A(black_buffer, red_buffer);
+}

@@ -28,6 +28,10 @@ void EPD_Dis_Part_Num(unsigned int x_startA,unsigned int y_startA,const unsigned
 void EPD_HW_Init_Fast(void);
 void EPD_WhiteScreen_ALL_Fast(const unsigned char* datasBW,const unsigned char* datasRW);
 void EPD_WhiteScreen_White_Fast(void);
+
+//Experimental SSD1680A-style fast B/W clock refresh
+void EPD_HW_Init_Fast_BW_A(void);
+void EPD_WhiteScreen_BW_Fast_A(const unsigned char* datasBW, const unsigned char* datasRW);
 										 
 #endif
 

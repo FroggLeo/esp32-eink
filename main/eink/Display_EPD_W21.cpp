@@ -327,6 +327,120 @@ void EPD_Dis_Part(unsigned int x_start,unsigned int y_start,const unsigned char 
 
 }
 
+
+
+//Experimental fast black/white refresh for the 296x128 SSD1680A B/W/R panel family.
+//This LUT and the 227-byte expansion are ported directly from the open-source
+//cc2640r2-etag driver's 2.9-inch SSD1680A fast clock refresh implementation.
+//Unlike SSD1680 Mode-2 differential refresh, this uses the B/W/R Mode-1 LUT
+//and writes the desired B/W image directly, with the red RAM held clear.
+#define EPD_FAST_BW_VSS   0x00
+#define EPD_FAST_BW_VSH1  0x40
+#define EPD_FAST_BW_VSL   0x80
+#define EPD_FAST_BW_VSH2  0xC0
+
+static const unsigned char EPD_FAST_BW_LUT_LITE[35] =
+{
+    // RP,   A,                         B,    C,                         D,    SRAB, SRCD
+    0x00,   0x00,                      0x00, 0x00,                      0x00, 0x00, 0x00, // LUTC
+
+    // Hold red pixels in place during fast B/W refresh. Red pixels select
+    // LUTR in SSD1680A 3-color mode, so skipping LUTR means those pixels
+    // receive no source-drive phases during this update.
+    0x00,   0x00,                      0x00,
+            0x00,                      0x00, 0x00, 0x00,               // LUTR
+
+    0x01,   EPD_FAST_BW_VSL  | 0x3F,  0x00,
+            0x00,                      0x00, 0x02, 0x00,               // LUTW
+
+    // Stronger single-pass black drive.
+    // 0x3F ~= two 0x1F passes worth of phase length.
+    0x01,   EPD_FAST_BW_VSH1 | 0x3F,  0x00,
+            0x00,                      0x00, 0x01, 0x00,               // LUTB
+
+    // FR: 5 = 125 Hz
+    0x05,
+
+    // EOPT, VGH, VSH1, VSH2, VSL, VCOM
+    0x22, 0x17, 0x41, 0x94, 0x32, 0x36
+};
+
+static void EPD_Load_Fast_BW_LUT_A(void)
+{
+    // SSD1680A uses a 227-byte waveform payload for command 0x32.
+    // The "lite" LUT stores only the first 7-byte group for LUTC/R/W/B;
+    // the remaining seven groups of each LUT are zero-filled.
+    EPD_W21_WriteCMD(0x32);
+
+    for (unsigned int lut = 0; lut < 4; lut++)
+    {
+        for (unsigned int i = 0; i < 7; i++)
+        {
+            EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[lut * 7 + i]);
+        }
+
+        for (unsigned int i = 0; i < 49; i++)
+        {
+            EPD_W21_WriteDATA(0x00);
+        }
+    }
+
+    // 4 * (7 + 49) = 224 bytes, then FR + 2 XON bytes = 227.
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[28]);
+    EPD_W21_WriteDATA(0x00);
+    EPD_W21_WriteDATA(0x00);
+
+    EPD_W21_WriteCMD(0x3F); // LUT end option
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[29]);
+
+    EPD_W21_WriteCMD(0x03); // gate voltage
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[30]);
+
+    EPD_W21_WriteCMD(0x04); // source voltages
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[31]); // VSH1
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[32]); // VSH2
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[33]); // VSL
+
+    EPD_W21_WriteCMD(0x2C); // VCOM
+    EPD_W21_WriteDATA(EPD_FAST_BW_LUT_LITE[34]);
+}
+
+void EPD_HW_Init_Fast_BW_A(void)
+{
+    // Keep the exact geometry/orientation initialization that is already
+    // proven on this panel, then override only the waveform/voltages.
+    EPD_HW_Init();
+    EPD_Load_Fast_BW_LUT_A();
+}
+
+void EPD_WhiteScreen_BW_Fast_A(const unsigned char* datasBW, const unsigned char* datasRW)
+{
+    // Desired black/white image. Canvas uses 0 = ink. Red pixels are forced
+    // to 0 in B/W RAM, giving the SSD1680A's canonical red encoding:
+    // R RAM = 1, B/W RAM = 0.
+    EPD_W21_WriteCMD(0x24);
+    for (unsigned int i = 0; i < EPD_ARRAY; i++)
+    {
+        EPD_W21_WriteDATA(datasBW[i] & datasRW[i]);
+    }
+
+    // Preserve the current red canvas instead of clearing it. Canvas uses
+    // 0 = red ink, while SSD1680A red RAM uses 1 = red.
+    EPD_W21_WriteCMD(0x26);
+    for (unsigned int i = 0; i < EPD_ARRAY; i++)
+    {
+        EPD_W21_WriteDATA((unsigned char)~datasRW[i]);
+    }
+
+    // Display Mode 1 using the custom fast waveform. LUTR is intentionally
+    // disabled above, so pixels marked red are held rather than refreshed.
+    EPD_W21_WriteCMD(0x22);
+    EPD_W21_WriteDATA(0xC7);
+    EPD_W21_WriteCMD(0x20);
+    Epaper_READBUSY();
+}
+
+
 //Deep sleep function
 void EPD_DeepSleep(void)
 {  	
