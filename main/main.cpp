@@ -8,6 +8,8 @@
 #include "graphics/drawing.hpp"
 #include "graphics/font.hpp"
 #include "graphics/fonts/test_font.hpp"
+#include "graphics/fonts/minecraft_regular.hpp"
+#include "graphics/fonts/minecraft_bold.hpp"
 
 static const char *TAG = "main";
 
@@ -50,9 +52,16 @@ extern "C" void app_main() {
 
     delay(1000);
 
-    set_font(petabyt_font);
     black.buffer_fill(true);
+    set_font(petabyt_font);
     draw_text(black, 10, 10, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMN");
     draw_text(black, 10, 20, "OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+    set_font(minecraft_regular);
+    draw_text(black, 10, 40, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMN");
+    draw_text(black, 10, 50, "OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+    set_font(minecraft_bold);
+    draw_text(black, 10, 70, " !\"#$%&'()*+,-./0123456789:;<=>?");
+    draw_text(black, 10, 80, "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_");
+    draw_text(black, 10, 90, "`abcdefghijklmnopqrstuvwxyz{|}~");
     display.refresh_partial(black.get_buffer());
 }
