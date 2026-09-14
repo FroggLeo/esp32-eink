@@ -4,6 +4,7 @@
 #include "graphics/canvas.hpp"
 #include "graphics/drawing.hpp"
 #include "graphics/font.hpp"
+#include "graphics/fonts/test_font.hpp"
 
 void draw_rect(Canvas& canvas, int x, int y, int width, int height, bool fill, bool white) {
     if (fill) {
@@ -25,6 +26,7 @@ void draw_rect(Canvas& canvas, int x, int y, int width, int height, bool fill, b
 }
 
 void draw_sample(Canvas& canvas, int x, int y, bool white) {
+    set_font(test_font);
     draw_text(canvas, x+1, y+1, "HELLO", false);
     draw_rect(canvas, x, y+9, 31, 1, true, white);
     draw_rect(canvas, x+33, y, 10, 10, true, white);
