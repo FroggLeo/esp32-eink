@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "graphics/canvas.hpp"
 #include "graphics/font.hpp"
 
 static const Font *font = nullptr;

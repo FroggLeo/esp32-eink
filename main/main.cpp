@@ -1,5 +1,7 @@
 #include "DEV_Config.h"
 #include "esp_log.h"
+#include "fonts/petabyt_font.hpp"
+#include "freertos/FreeRTOS.h"
 
 #include "eink/display.hpp"
 #include "graphics/canvas.hpp"
@@ -8,6 +10,10 @@
 #include "graphics/fonts/test_font.hpp"
 
 static const char *TAG = "main";
+
+void delay(int ms) {
+    vTaskDelay(pdMS_TO_TICKS(ms));
+}
 
 extern "C" void app_main() {
     ESP_LOGI(TAG, "Starting display test");
@@ -41,4 +47,12 @@ extern "C" void app_main() {
     display.refresh_partial(black.get_buffer());
 
     ESP_LOGI(TAG, "Testing completed");
+
+    delay(1000);
+
+    set_font(petabyt_font);
+    black.buffer_fill(true);
+    draw_text(black, 10, 10, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMN");
+    draw_text(black, 10, 20, "OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+    display.refresh_partial(black.get_buffer());
 }
