@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <cstring>
 
 class Canvas {
     public:
@@ -8,6 +9,7 @@ class Canvas {
         : native_width(native_width), native_height(native_height), buffer_size(((native_width + 7) / 8) * native_height) {
             framebuffer = new uint8_t[buffer_size];
             set_rotation(rotation);
+            memset(framebuffer, 0xFF, buffer_size);
         }
         ~Canvas() {
             delete[] framebuffer;

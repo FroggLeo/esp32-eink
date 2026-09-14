@@ -27,7 +27,7 @@ void draw_rect(Canvas& canvas, int x, int y, int width, int height, bool fill, b
 
 void draw_sample(Canvas& canvas, int x, int y, bool white) {
     set_font(test_font);
-    draw_text(canvas, x+1, y+1, "HELLO", false);
+    draw_text(canvas, x+1, y+1, "HELLO", white);
     draw_rect(canvas, x, y+9, 31, 1, true, white);
     draw_rect(canvas, x+33, y, 10, 10, true, white);
     draw_rect(canvas, x+45, y, 10, 10, false, white);
